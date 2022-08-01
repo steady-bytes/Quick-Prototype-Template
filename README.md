@@ -11,7 +11,7 @@ __Back-end__
 
 First Post Steps:
 1. CRA New App [X], Tailwind [X]
-2. Setup Hasura locally using docker-compose [X], Install SWR [], Query GetPages []
+2. Setup Hasura locally using docker-compose [X], Install SWR [X], Query GetPages [X]
 3. Add React Router [], Create some default pages (404, signup, login, Application Landing Page, Dashboard) and route between them []
 4. Setup casdoor/casbin with the current docker-compose []
 5. Integrate Auth with the router []
