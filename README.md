@@ -2,12 +2,16 @@
 
 # Local Deps
 * node
+* docker
+* docker-compose
 
 ## Stack
 __Front-end__
 * React, SWR, ReactRouter, Tailwind
+
 __Back-end__
-* Hasura (GraphQL), Postgres, AuthN/AuthZ(Casdoor, Casbin)?
+* Hasura (GraphQL)
+* Postgres
 
 First Post Steps:
 1. CRA New App [X], Tailwind [X]
