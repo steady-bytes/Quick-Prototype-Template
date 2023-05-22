@@ -1,24 +1,12 @@
 # Prototype Project Template
+A way to build, and deploy applications fast!
 
-# Local Deps
-* node
-* docker
-* docker-compose
-
-## Stack
-__Front-end__
-* React, SWR, ReactRouter, Tailwind
-
-__Back-end__
-* Hasura (GraphQL)
+## Tech Stack
+* GraphQL (hasura)
 * Postgres
-
-First Post Steps:
-1. CRA New App [X], Tailwind [X]
-2. Setup Hasura locally using docker-compose [X], Install SWR [X], Query GetPages [X]
-3. Add React Router [], Create some default pages (404, signup, login, Application Landing Page, Dashboard) and route between them []
-4. Setup casdoor/casbin with the current docker-compose []
-5. Integrate Auth with the router []
-6. Add feature end to end (As a registered user, I would like to create a new project, so that I can begin to
-   build my cool idea)
-
+* SuperTokens (auth)
+* Golang/Rust Container
+* gRPC-web (rust/go/js)
+* any front-end client (react, wasm (leptos/yew), mobile, native)
+* terraform -> deploy infra
+* github actions to build containers, run migrations
