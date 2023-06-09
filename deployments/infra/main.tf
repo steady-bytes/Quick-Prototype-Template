@@ -6,11 +6,15 @@ terraform {
             source = "hashicorp/google"
             version = "4.65.2"
         }
+
+        google-beta = {
+          version = ">= 3.8"
+        }
     }
 }
 
 provider "google" {
-    credentials = file("credentials.json")
+    credentials = file("creds.json")
     project = var.project_id
     region = var.region
     zone = var.zone
@@ -36,6 +40,7 @@ module "project-services" {
         "run.googleapis.com",
         "cloudresourcemanager.googleapis.com",
         "iam.googleapis.com",
+        "secretmanager.googleapis.com",
     ]
 }
 
@@ -116,9 +121,8 @@ resource "google_sql_database_instance" "main" {
     disk_size             = 10
     disk_type             = "PD_SSD"
     user_labels           = var.labels
-    
     ip_configuration {
-      ipv4_enabled    = true  
+      ipv4_enabled    = false
       private_network = "projects/${var.project_id}/global/networks/${google_compute_network.main.name}"
     }
     location_preference {
@@ -168,7 +172,7 @@ resource "google_cloud_run_v2_service" "default" {
     volumes {
       name = "cloudsql"
       cloud_sql_instance {
-        instances = [google_sql_database_instance.instance.connection_name]
+        instances = [google_sql_database_instance.main.connection_name]
       }
     }
 
@@ -180,15 +184,15 @@ resource "google_cloud_run_v2_service" "default" {
         value = "bar"
       }
       
-      env {
-        name = "SECRET_ENV_VAR"
-        value_source {
-          secret_key_ref {
-            secret = google_secret_manager_secret.secret.secret_id
-            version = "1"
-          }
-        }
-      }
+#       env {
+#         name = "SECRET_ENV_VAR"
+#         value_source {
+#           secret_key_ref {
+#  #           secret = google_secret_manager_secret.secret.secret_id
+#             version = "1"
+#           }
+#         }
+#       }
       
       volume_mounts {
         name = "cloudsql"
@@ -201,24 +205,24 @@ resource "google_cloud_run_v2_service" "default" {
     type = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
     percent = 100
   }
-  depends_on = [google_secret_manager_secret_version.secret-version-data]
+  #depends_on = [google_secret_manager_secret_version.secret-version-data]
 }
 
-resource "google_secret_manager_secret" "secret" {
-  secret_id = "secret-1"
-  replication {
-    automatic = true
-  }
-}
+# resource "google_secret_manager_secret" "secret" {
+#   secret_id = "secret-1"
+#   replication {
+#     automatic = true
+#   }
+# }
 
-resource "google_secret_manager_secret_version" "secret-version-data" {
-  secret = google_secret_manager_secret.secret.name
-  secret_data = "secret-data"
-}
+# resource "google_secret_manager_secret_version" "secret-version-data" {
+#   secret = google_secret_manager_secret.secret.name
+#   secret_data = "secret-data"
+# }
 
-resource "google_secret_manager_secret_iam_member" "secret-access" {
-  secret_id = google_secret_manager_secret.secret.id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
-  depends_on = [google_secret_manager_secret.secret]
-}
+# resource "google_secret_manager_secret_iam_member" "secret-access" {
+#   secret_id = google_secret_manager_secret.secret.id
+#   role      = "roles/secretmanager.secretAccessor"
+#   member    = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+#   depends_on = [google_secret_manager_secret.secret]
+# }
