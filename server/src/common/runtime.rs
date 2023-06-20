@@ -7,8 +7,11 @@ use sqlx::{
     Pool, Postgres
 };
 
+use axum_session::{SessionStore, SessionPgPool};
+
 use crate::common::router;
 use crate::common::database;
+use crate::common::session;
 
 ///////////////////////////////
 /// ******* RUNTIME ******* ///
@@ -18,6 +21,7 @@ use crate::common::database;
 pub struct Runtime {
     socket_address: Option<SocketAddr>,
     database_connection: Option<Pool<Postgres>>,
+    session_store: Option<SessionStore<SessionPgPool>>,
 }
 
 type RuntimeResult<T> = std::result::Result<T, RuntimeError>;
@@ -43,6 +47,7 @@ impl Runtime {
         Runtime { 
             socket_address: None, 
             database_connection: None,
+            session_store: None,
         }
     }
 
@@ -73,16 +78,19 @@ impl Runtime {
         let ip = IpAddr::V4(Ipv4Addr::new(0,0,0,0));
         let socket_address = SocketAddr::new(ip, port.parse::<u16>().unwrap());
         let database_connection = database::connect().await;
+        let sessions = session::new(database_connection.clone()).await; 
         
         Ok(Runtime {
             socket_address: Some(socket_address), 
             database_connection: Some(database_connection),
+            session_store: Some(sessions),
         })
     }
 
     pub async fn execute(self) {
         let dbp = self.database_connection.unwrap();
-        let app = router::new(dbp).await;
+        let ses = self.session_store.unwrap();
+        let app = router::new(dbp, ses.clone()).await;
         let svc = app.into_make_service();
         let lst = self.socket_address.unwrap();
 

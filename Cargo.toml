@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = ["migration", "entity", "application", "server"]
+members = ["application", "server"]
 
 [[bin]]
 name = "server"
