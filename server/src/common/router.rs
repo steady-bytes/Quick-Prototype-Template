@@ -1,3 +1,10 @@
+use std::time::Duration;
+
+use sqlx::{
+    Pool, Postgres,
+    postgres::{PgPool, PgPoolOptions}
+};
+
 use axum::{
     routing::{get},
     Router,
@@ -13,7 +20,7 @@ use crate::handler::signup::{
     signup_user,
 };
 
-pub fn new() -> Router {
+pub async fn new(pool: Pool<Postgres>) -> Router {
     let html_templates = templates::new();
     let csrf_config = CsrfConfig::default();
 
@@ -22,4 +29,5 @@ pub fn new() -> Router {
         .route("/signup", get(signup_page).post(signup_user))
         .layer(Extension(html_templates))
         .with_state(csrf_config)
+        .with_state(pool)
 }

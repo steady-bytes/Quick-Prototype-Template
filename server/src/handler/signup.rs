@@ -1,17 +1,20 @@
 use serde::Deserialize;
+use sqlx::postgres::PgPool;
 use axum::{
-    extract,
+    extract::{FromRef, FromRequestParts, State, Path},
     Extension,
     response::{Html, IntoResponse},
     Form,
+    http::{StatusCode},
 };
 
 use axum_csrf::{CsrfToken};
 
 use crate::common::templates;
+use crate::common::database::DatabaseConnection;
 
 pub async fn greet(
-    extract::Path(name): extract::Path<String>,
+    Path(name): Path<String>,
     Extension(templates): Extension<templates::Templates>,
 ) -> impl IntoResponse {
     let mut context = templates::new_template_context();
@@ -27,7 +30,6 @@ pub async fn signup_page(
     let mut context = templates::new_template_context();
     let token = &token.authenticity_token();
     context.insert("authenticity_token", token);
-
     println!("csrf token: {}", token);
 
     Html(templates.render("signup_page", &context).unwrap())
@@ -42,15 +44,22 @@ pub struct NewUserRequest {
 }
 
 pub async fn signup_user(
-    token: CsrfToken, 
-    Form(payload): Form<NewUserRequest>
-) -> &'static str {
+    Form(payload): Form<NewUserRequest>,
+) -> Result<String, (StatusCode, String)> { 
+    let mut conn = conn;
+    sqlx::query_scalar("select 'hello world from pg'")
+        .fetch_one(&mut conn)
+        .await
+        .map_err(internal_error);
 
-    println!("csrf token: {}", &payload.authenticity_token);
+    Ok("Implement me".to_string())
+}
 
-    if token.verify(&payload.authenticity_token).is_err() {
-        "Token is invalid"
-    } else {
-       "Token is Valid lets do stuff!"
-    }
+/// Utility function for mapping any error into a `500 Internal Server Error`
+/// response.
+fn internal_error<E>(err: E) -> (StatusCode, String)
+where
+    E: std::error::Error,
+{
+    (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
 }
