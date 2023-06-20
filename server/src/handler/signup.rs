@@ -1,17 +1,14 @@
 use serde::Deserialize;
 use sqlx::postgres::PgPool;
 use axum::{
-    extract::{FromRef, FromRequestParts, State, Path},
+    extract::{State, Path},
     Extension,
     response::{Html, IntoResponse},
     Form,
     http::{StatusCode},
 };
 
-use axum_csrf::{CsrfToken};
-
 use crate::common::templates;
-use crate::common::database::DatabaseConnection;
 
 pub async fn greet(
     Path(name): Path<String>,
@@ -25,12 +22,9 @@ pub async fn greet(
 
 pub async fn signup_page(
     Extension(templates): Extension<templates::Templates>,
-    token: CsrfToken,
 ) -> impl IntoResponse {
     let mut context = templates::new_template_context();
-    let token = &token.authenticity_token();
-    context.insert("authenticity_token", token);
-    println!("csrf token: {}", token);
+    context.insert("authenticity_token", "sfsdfs");
 
     Html(templates.render("signup_page", &context).unwrap())
 }
@@ -44,15 +38,10 @@ pub struct NewUserRequest {
 }
 
 pub async fn signup_user(
+    Extension(pool): Extension<PgPool>,
     Form(payload): Form<NewUserRequest>,
-) -> Result<String, (StatusCode, String)> { 
-    let mut conn = conn;
-    sqlx::query_scalar("select 'hello world from pg'")
-        .fetch_one(&mut conn)
-        .await
-        .map_err(internal_error);
-
-    Ok("Implement me".to_string())
+) -> String { 
+    "Implement me".to_string()
 }
 
 /// Utility function for mapping any error into a `500 Internal Server Error`

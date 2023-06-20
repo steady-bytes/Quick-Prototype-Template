@@ -81,10 +81,13 @@ impl Runtime {
     }
 
     pub async fn execute(self) {
-        let app = router::new(self.database_connection.unwrap()).await;
-        let listener = self.socket_address.unwrap();
-        let _ = axum::Server::bind(&listener).
-            serve(app.into_make_service()).
+        let dbp = self.database_connection.unwrap();
+        let app = router::new(dbp).await;
+        let svc = app.into_make_service();
+        let lst = self.socket_address.unwrap();
+
+        let _ = axum::Server::bind(&lst).
+            serve(svc).
             await;
     }    
 }
