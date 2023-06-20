@@ -1,14 +1,22 @@
 use serde::Deserialize;
 use sqlx::postgres::PgPool;
 use axum::{
-    extract::{State, Path},
+    extract::Path,
     Extension,
     response::{Html, IntoResponse},
     Form,
-    http::{StatusCode},
+    Router,
+    routing::{get, post},
 };
 
 use crate::common::templates;
+
+pub fn router() -> Router {
+    Router::new()
+        .route("/greet/:name", get(greet))
+        .route("/signup", get(signup_page))
+        .route("/api/signup", post(signup_user))
+}
 
 pub async fn greet(
     Path(name): Path<String>,
@@ -31,24 +39,15 @@ pub async fn signup_page(
 
 #[derive(Deserialize, Debug)]
 pub struct NewUserRequest {
-    email: String,
-    password: String,
-    confirm_password: String,
-    authenticity_token: String,
+    _email: String,
+    _password: String,
+    _confirm_password: String,
+    _authenticity_token: String,
 }
 
 pub async fn signup_user(
-    Extension(pool): Extension<PgPool>,
-    Form(payload): Form<NewUserRequest>,
+    Extension(_pool): Extension<PgPool>,
+    Form(_payload): Form<NewUserRequest>,
 ) -> String { 
     "Implement me".to_string()
-}
-
-/// Utility function for mapping any error into a `500 Internal Server Error`
-/// response.
-fn internal_error<E>(err: E) -> (StatusCode, String)
-where
-    E: std::error::Error,
-{
-    (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
 }
