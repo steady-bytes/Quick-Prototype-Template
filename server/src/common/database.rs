@@ -1,5 +1,5 @@
 use sqlx::{
-    postgres::{PgPoolOptions, Postgres},
+    postgres::{PgPoolOptions},
     PgPool,
 };
 

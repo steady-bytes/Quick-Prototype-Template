@@ -11,6 +11,7 @@ pub async fn new(pool: PgPool, session_store: SessionStore<SessionPgPool>) -> Ro
 
     Router::new() 
         .merge(crate::handler::signup::router())
+        .merge(crate::handler::app::router())
         .layer(Extension(html_templates))
         .layer(Extension(pool))
         .layer(SessionLayer::new(session_store))

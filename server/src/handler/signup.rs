@@ -1,22 +1,24 @@
 use serde::Deserialize;
 use sqlx::postgres::PgPool;
+
 use axum::{
     extract::Path,
     Extension,
-    response::{Html, IntoResponse},
+    response::{Html, IntoResponse, Redirect},
     Form,
     Router,
     routing::{get, post},
 };
 
 use axum_session::{Session, SessionPgPool};
-use crate::common::templates;
+
+use crate::common::{templates, jwt};
 
 pub fn router() -> Router {
     Router::new()
         .route("/greet/:name", get(greet))
-        .route("/signup", get(signup_page))
-        .route("/api/signup", post(signup_user))
+        .route("/signup", get(render_signup_page))
+        .route("/signup", post(signup_user))
 }
 
 pub async fn greet(
@@ -29,7 +31,7 @@ pub async fn greet(
     Html(templates.render("hello", &context).unwrap())
 }
 
-pub async fn signup_page(
+pub async fn render_signup_page(
     Extension(templates): Extension<templates::Templates>,
     session: Session<SessionPgPool>,
 ) -> impl IntoResponse {
@@ -50,42 +52,61 @@ pub struct NewUserRequest {
     email: String,
     password: String,
     confirm_password: String,
-    authenticity_token: String,
+    offline: bool,
 }
 
 pub async fn signup_user(
     Extension(pool): Extension<PgPool>,
     session: Session<SessionPgPool>,
     Form(req): Form<NewUserRequest>,
-) -> String { 
+) -> Redirect { 
     let mut count : usize = session.get("count").unwrap_or(0);
     count += 1;
     session.set("count", count);
     println!("{}", count.to_string());
-
-    // verify the csrf token
+    println!("offline value {}", &req.offline);
 
     // validate input
     if &req.password != &req.confirm_password {
         println!("passwords don't match");
-        return "passwords don't match".to_string()
+        return Redirect::to("/signup?error=password_match_error")
     } else if &req.password.len() < &8 {
         println!("password to short");
-        return "password is to short".to_string()
+        return Redirect::to("/signup?error=password_length")
     }
 
-    println!("{}", &req.email);
-
-    let _ = sqlx::query("INSERT INTO users (email, password) values ($1, $2)")
+    match sqlx::query("INSERT INTO users (email, password) values ($1, $2)")
         .bind(&req.email)
         .bind(&req.password)
-        .fetch_one(&pool)
-        .await;
+        .execute(&pool)
+        .await {
+            Ok(row) => {
+                println!("user: {:?}", row);
+                // generate access, refresh tokens with the role (default, admin)
+                let mut token_options = jwt::ForgeOptions{ offline_mode: false};
+                if req.offline {
+                    token_options.offline_mode = true;
+                }            
 
+                match jwt::forge_tokens(&req.email, Some(token_options)) {
+                    Ok(tokens) => {
+                        println!("tokens result: {:?}", tokens);
+                        // add access token to session
+                        session.set("access_token", tokens.access_token);
+                        session.set("id_token", tokens.id_token);
+                        session.set("refresh_token", tokens.refresh_token);
+                    },
+                    Err(e) => {
+                        println!("and error occurred when forging the tokens {:?}", e);
+                    }
+                }
+            },
+            Err(e) => {
+                println!("error: {:?}", e); 
+                // redirect back to the signup page with an error
+                return Redirect::to("/signup?error=unique_email")
+            }
+        }
 
-    // add access_token, and refresh_token to the session
-
-    // redirect to app page
-
-    "Implement me".to_string()
+    Redirect::to("/_/app")
 }
