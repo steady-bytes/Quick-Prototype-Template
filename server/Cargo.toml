@@ -7,6 +7,7 @@ publish = false
 [dependencies]
 askama = "0.11"
 axum = "0.6.18"
+axum-macros = "0.3.7"
 axum_csrf = "0.6.2"
 axum_session = { version = "0.2.3", features = ["postgres-rustls"] }
 chrono = "0.4.26"
