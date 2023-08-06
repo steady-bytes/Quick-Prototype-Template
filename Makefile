@@ -33,10 +33,10 @@ db-start-server:
 
 # run the db migration tool
 db-migrate-up:
-	cd migration && cargo run -- up
+	cd server && sqlx migrate run
 
 db-migrate-down:
-	sea-orm-cli migrate down
+	cd server && sqlx migrate revert
 
 ### Terminate - the whole db stack, it's configuration, and data
 db-terminate: db-stop-server db-clean

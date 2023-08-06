@@ -97,6 +97,10 @@
             {% if error == "password_strength" %}
               <div class="alert alert-danger" role="alert">Password must be 8-20 characters long, contain letters numbers only.</div>
             {% else %}{% endif %}
+
+            {% if error == "internal_server_error" %}
+              <div class="alert alert-danger" role="alert">An internal error occurred please try again later.</div>
+            {% else %}{% endif %}
             
             <div class="form-floating form">
                 <input type="password" class="form-control" id="password" name="password" required>
