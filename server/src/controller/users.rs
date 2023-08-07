@@ -1,5 +1,6 @@
 use uuid::Uuid;
 use sqlx::postgres::PgPool;
+use crate::common::crypto;
 
 #[derive(Debug)]
 pub enum UsersError{
@@ -8,6 +9,7 @@ pub enum UsersError{
     FailedUserInsert,
     FailedUserInsertUniqueEmail,
     FailedUserRoleInsert,
+    FailedUserTransactionCommit,
 }
 
 /// Count the number of users that are in the system
@@ -24,47 +26,69 @@ pub async fn count_users(pool: &PgPool) -> Result<i64, UsersError> {
 }
 
 /// Insert a new user into the system, email is considered a unique value
+/// A role will also be added for the user using a database transaction
+/// If one insert fails they both rollback
 pub async fn insert_user(pool: &PgPool, params: &InsertUserParams) -> Result<Uuid, UsersError> {
     println!("insert_user");
 
-    let id = Uuid::new_v4();
+    let id = Uuid::new_v4(); 
+    let mut tx = pool.begin().await.unwrap();
 
-    // TODO: Hash password
+    match save_user_tx(&mut tx, id, params).await {
+        Ok(_v) => println!("user inserted {}", id),
+        Err(e) => {
+            println!("{:?}", e);
+            let _e = tx.rollback().await;
+            return Err(e)
+        },
+    };
     
+    match insert_user_role_tx(&mut tx, id, &params.role_name).await {
+        Ok(_v) => println!("user role inserted"),
+        Err(e) => {
+            println!("{:?}", e);
+            let _e = tx.rollback().await;
+            return Err(e)
+        },
+    }
+
+    println!("did we make it through the tx");
+
+    match tx.commit().await {
+        Ok(_v) => return Ok(id),
+        Err(_e) => return Err(UsersError::FailedUserTransactionCommit),
+    }
+}
+
+pub async fn save_user_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, 
+    id: Uuid, 
+    params: &InsertUserParams
+) -> Result<(), UsersError> {
+    let pw = crypto::hash_password(params.password.clone());
+
     match sqlx::query("INSERT INTO users (id, email, password) values ($1, $2, $3)")
         .bind(id)
         .bind(&params.email)
-        .bind(&params.password)
-        .execute(pool)
+        .bind(&pw)
+        .execute(&mut **tx)
         .await {
             Ok(_v) => {
-                println!("{}", id);
+                return Ok(())
             },
             Err(err) => {
-                println!("{}", err);
                 let e = err.as_database_error().and_then(|e| {e.constraint()});
                 if e.is_some() {
                     if e.unwrap() == "users_email_key" {
                         return Err(UsersError::FailedUserInsertUniqueEmail)
                     }
                 }
-
-                return Err(UsersError::FailedUserInsert)
+                return Err(UsersError::FailedUserInsert);
             },
         }
-
-    // match insert_user_role(pool, id.to_string().as_str(), &params.role_name).await {
-    //     Ok(_v) => println!("user role inserted"),
-    //     Err(e) => {
-    //         println!("{:?}", e)
-
-    //         // TODO: rollback inserted_user
-    //     },
-    // }
-
-    Ok(id)
 }
 
+#[derive(Debug)]
 pub struct InsertUserParams {
     pub email: String,
     pub password: String,
@@ -74,16 +98,21 @@ pub struct InsertUserParams {
 #[derive(sqlx::FromRow)]
 struct Role {
     id: Uuid,
-    _name: String,
-    _description: String,
+    name: String,
+    description: String,
 }
 
 /// Insert a user role mapping to the `user_role` linking table
-pub async fn insert_user_role(pool: &PgPool, user_id: &str, role_name: &str) -> Result<(), UsersError> {
-    // query roles by name to get the role id
-    let role_id = match sqlx::query_as::<_, Role>("SELECT id FROM roles WHERE name = ($1)")
+pub async fn insert_user_role_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    user_id: Uuid,
+    role_name: &str
+) -> Result<(), UsersError> {
+    println!("{}", role_name);
+
+    let role_id = match sqlx::query_as::<_, Role>("SELECT * FROM roles WHERE name = ($1)")
         .bind(role_name)
-        .fetch_one(pool).await {
+        .fetch_one(&mut **tx).await {
             Ok(v) => v.id,
             Err(_e) => return Err(UsersError::FailedRoleNameLookup),
         };
@@ -91,9 +120,12 @@ pub async fn insert_user_role(pool: &PgPool, user_id: &str, role_name: &str) -> 
     match sqlx::query("INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)")
         .bind(user_id)
         .bind(role_id)
-        .execute(pool)
+        .execute(&mut **tx)
         .await {
             Ok(_v) => return Ok(()),
-            Err(_e) => return Err(UsersError::FailedUserRoleInsert),
+            Err(e) => {
+                println!("{}", e);
+                return Err(UsersError::FailedUserRoleInsert)
+            }
         }
 }

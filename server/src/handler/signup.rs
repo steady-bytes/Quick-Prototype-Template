@@ -63,7 +63,7 @@ pub async fn render_signup_page(
 ) -> impl IntoResponse {
     let mut context = templates::new_template_context();
     let authenticity_token = Alphanumeric.sample_string(&mut rand::thread_rng(), 64);
-    println!("{}", authenticity_token);
+    println!("authenticity_ token: {}", authenticity_token);
     context.insert("authenticity_token", &authenticity_token);
     session.set("authenticity_token", authenticity_token);
     context.insert("error", &params.error);
@@ -89,7 +89,6 @@ pub struct NewUserRequest {
     confirm_password: String,
     offline: bool,
     authenticity_token: String,
-    admin: Option<bool>,
 }
 
 pub async fn signup_user(
@@ -119,6 +118,8 @@ pub async fn signup_user(
         password: req.password.clone(),
         role_name: role_name,
     };
+
+    println!("{:?}", insert_params);
 
     match insert_user(&pool, insert_params).await {
        Ok(v) => v,

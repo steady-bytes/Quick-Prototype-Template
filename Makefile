@@ -33,7 +33,7 @@ db-start-server:
 
 # run the db migration tool
 db-migrate-up:
-	cd server && sqlx migrate run
+	sqlx migrate run
 
 db-migrate-down:
 	cd server && sqlx migrate revert
@@ -70,7 +70,9 @@ clean: db-terminate
 
 # use cargo watch to reload the server when changes have been made
 watch-server:
-	export RUST_LOG=info && cargo watch -x 'run --bin server server'
+	cd server && \
+	export RUST_LOG=info PORT=8080 && \
+	cargo watch -x 'run --bin server server'
 
 ##################
 ### client targets 
