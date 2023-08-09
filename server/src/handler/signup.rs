@@ -91,12 +91,15 @@ pub struct NewUserRequest {
     authenticity_token: String,
 }
 
+#[axum_macros::debug_handler]
 pub async fn signup_user(
     Extension(pool): Extension<PgPool>,
     session: Session<SessionPgPool>,
     Form(req): Form<NewUserRequest>,
 ) -> Redirect { 
-    let authenticity_token = session.get("authenticity_token").unwrap_or(String::from(""));
+    let authenticity_token = session
+        .get("authenticity_token")
+        .unwrap_or(String::from(""));
 
     if &authenticity_token != &req.authenticity_token {
         return Redirect::to("/signup?error=internal_server_error")
