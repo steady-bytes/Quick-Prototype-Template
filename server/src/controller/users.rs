@@ -10,6 +10,7 @@ pub enum UsersError{
     FailedUserInsertUniqueEmail,
     FailedUserRoleInsert,
     FailedUserTransactionCommit,
+    FailedLogin,
 }
 
 /// Count the number of users that are in the system
@@ -128,4 +129,32 @@ pub async fn insert_user_role_tx(
                 return Err(UsersError::FailedUserRoleInsert)
             }
         }
+}
+
+#[derive(sqlx::FromRow, Debug)]
+struct User {
+    id: Uuid,
+    email: String,
+    password: String,
+}
+
+pub async fn attempt_user_login(
+    pool: &PgPool, 
+    email: String,
+    password: String,
+) -> Result<(), UsersError> {
+    let user = match sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = $1")
+        .bind(email)
+        .fetch_one(pool)
+        .await {
+            Ok(v) => v,
+            Err(e) => return Err(UsersError::FailedLogin)
+        };
+
+    println!("yeah?, {:?}", user);
+
+    match crypto::validate_password(user.password, password) {
+        true => return Ok(()),
+        false => return Err(UsersError::FailedLogin),
+    };
 }

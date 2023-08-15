@@ -13,6 +13,7 @@ pub fn new() -> Templates {
         add_raw_templates(vec![
             ("hello", include_str!("../../templates/hello.html")),
             ("signup_page", include_str!("../../templates/signup.html")),
+            ("login_page", include_str!("../../templates/login.html")),
             ("app", include_str!("../../templates/app.html"))
         ]).unwrap();
 

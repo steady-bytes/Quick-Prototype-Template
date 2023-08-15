@@ -12,7 +12,7 @@ pub fn hash_password(password: String) -> String {
     Pbkdf2.hash_password(password.as_bytes(), &salt).unwrap().to_string()
 }
 
-pub fn password_authenticate(provided: String, actual: String) -> bool {
+pub fn validate_password(provided: String, actual: String) -> bool {
     let pw_hash = PasswordHash::new(&provided).unwrap();
     match Pbkdf2.verify_password(actual.as_bytes(), &pw_hash) {
         Ok(_v) => {
