@@ -158,5 +158,5 @@ pub async fn signup_user(
 
     println!("tokens added to session");
 
-    Redirect::to("/_/app")
+    Redirect::to("/app")
 }

@@ -14,7 +14,8 @@ pub fn new() -> Templates {
             ("hello", include_str!("../../templates/hello.html")),
             ("signup_page", include_str!("../../templates/signup.html")),
             ("login_page", include_str!("../../templates/login.html")),
-            ("app", include_str!("../../templates/app.html"))
+            ("app", include_str!("../../templates/app.html")),
+            ("sidebar", include_str!("../../templates/components/sidebar.html")),
         ]).unwrap();
 
     Arc::new(tera)

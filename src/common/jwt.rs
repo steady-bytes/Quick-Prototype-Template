@@ -26,6 +26,7 @@ pub struct Tokens {
     pub expires_in: i64,
 }
 
+#[derive(Debug, Deserialize)]
 pub struct AccessToken {
     pub access_token: Option<String>,
     pub expires_in: i64,

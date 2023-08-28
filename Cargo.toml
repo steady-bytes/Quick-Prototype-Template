@@ -1,42 +1,27 @@
 [package]
-name = "Quick-Prototype-Template"
+name = "server"
 version = "0.1.0"
 edition = "2021"
-
-[workspace]
-members = ["application", "server"]
-
-[[bin]]
-name = "server"
-path = "server/src/main.rs"
-
-[[bin]]
-name = "api"
-path = "api/src/main.rs"
-
-[[bin]]
-name = "application"
-path = "application/src/main.rs"
+publish = false
 
 [dependencies]
 askama = "0.11"
 axum = "0.6.18"
-clap = "4.3.3"
+axum-macros = "0.3.7"
+axum_csrf = "0.6.2"
+axum_session = { version = "0.2.3", features = ["postgres-rustls"] }
+chrono = "0.4.26"
+clap = { version = "4.3.3", features = ["derive"] }
 dotenv = "0.15.0"
+jsonwebtoken = "8.3.0"
 lazy_static = "1.4.0"
+log = "0.4.19"
+rand = "0.8.5"
 sea-orm = "0.11.3"
 serde = "1.0.164"
+sqlx = { version = "0.6.3", features = ["postgres"]}
 tera = {version = "1.19.0", default-features = false}
 tokio = { version = "1.0", features = ["full"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-validator = "0.16.0"
-axum_csrf = "0.6.2"
-sqlx = "0.6.3"
-chrono = "0.4.26"
-jsonwebtoken = "8.3.0"
-axum_session = "0.2.3"
-axum-macros = "0.3.7"
-rand = "0.8.5"
 uuid = "1.4.1"
+validator = "0.16.0"
 pbkdf2 = "0.10"

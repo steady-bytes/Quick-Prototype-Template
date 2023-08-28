@@ -60,8 +60,6 @@ pub async fn login_user(
         return Redirect::to("/signup?error=internal_server_error")
     } 
 
-    println!("{:?}", req);
-
     // attempt login
     match attempt_user_login(&pool, req.email.clone(), req.password).await {
         Ok(_v) => println!("good auth"),
@@ -74,18 +72,21 @@ pub async fn login_user(
         token_options.offline_mode = true;
     }
     
+    // forge tokens, if fail redirect to signup page with internal_server_error
     match jwt::forge_tokens(&req.email.clone(), Some(token_options)) {
         Ok(tokens) => {
             // add access token to session
-            session.set("access_token", tokens.access_token);
-            session.set("id_token", tokens.id_token);
-            session.set("refresh_token", tokens.refresh_token);
+            session.set("access_token", &tokens.access_token.unwrap_or_default());
+            session.set("id_token", &tokens.id_token.unwrap_or_default());
+            
+            // todo -> if refresh_token is forged save it to the refresh token table
+            session.set("refresh_token", &tokens.refresh_token.unwrap_or_default());
+
+            return Redirect::to("/app")
         },
         Err(e) => {
             println!("and error occurred when forging the tokens {:?}", e);
             return Redirect::to("/signup?error=internal_server_error")
         }
     }
-
-    Redirect::to("/_/app")
 }
