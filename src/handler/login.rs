@@ -66,19 +66,25 @@ pub async fn login_user(
         Err(_e) => return Redirect::to("/login?error=incorrect_email_password")
     }
 
+    let scopes: Vec<String> = vec!["admin".to_string()];
+    let audience: Vec<String> = vec!["webapp".to_string()];
+
     // generate access, refresh tokens with the role (default, admin)
-    let mut token_options = jwt::ForgeOptions{ offline_mode: false};
-    if req.offline == Some(true) {
-        token_options.offline_mode = true;
-    }
-    
+    let tokens = jwt::ForgeOptions::new()
+        .offline(req.offline)
+        .subject(req.email)
+        .issuer(String::from("https://steady-bytes.com"))
+        .audience(audience)
+        .authorized_parties(String::from("client_id"))
+        .scopes(scopes)
+        .forge();
+     
     // forge tokens, if fail redirect to signup page with internal_server_error
-    match jwt::forge_tokens(&req.email.clone(), Some(token_options)) {
+    match tokens {
         Ok(tokens) => {
             // add access token to session
-            session.set("access_token", &tokens.access_token.unwrap_or_default());
-            session.set("id_token", &tokens.id_token.unwrap_or_default());
-            
+            session.set("access_token", &tokens.access_token);
+            session.set("id_token", &tokens.id_token); 
             // todo -> if refresh_token is forged save it to the refresh token table
             session.set("refresh_token", &tokens.refresh_token.unwrap_or_default());
 

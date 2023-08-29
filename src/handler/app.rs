@@ -71,5 +71,11 @@ pub async fn render_app(
 
     // set the navigation items into the sidebar
 
+    // set the username
+
+    // set the user pic
+
+    // 
+
     Html(templates.render("app", &context).unwrap()).into_response()
 }

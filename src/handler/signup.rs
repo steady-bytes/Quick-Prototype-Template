@@ -116,13 +116,14 @@ pub async fn signup_user(
         Err(_e) => String::from("default"),
     };
 
+    let scopes: Vec<String> = vec!["admin".to_string()];
+    let audience: Vec<String> = vec!["webapp".to_string()];
+
     let insert_params = &InsertUserParams{
         email: req.email.clone(),
         password: req.password.clone(),
         role_name: role_name,
     };
-
-    println!("{:?}", insert_params);
 
     match insert_user(&pool, insert_params).await {
        Ok(v) => v,
@@ -135,28 +136,30 @@ pub async fn signup_user(
        }
     };
 
-    println!("user saved");
-
     // generate access, refresh tokens with the role (default, admin)
-    let mut token_options = jwt::ForgeOptions{ offline_mode: false};
-    if req.offline {
-        token_options.offline_mode = true;
-    }            
-    
-    match jwt::forge_tokens(&req.email, Some(token_options)) {
-        Ok(tokens) => {
-            // add access token to session
-            session.set("access_token", tokens.access_token);
-            session.set("id_token", tokens.id_token);
-            session.set("refresh_token", tokens.refresh_token);
-        },
-        Err(e) => {
-            println!("and error occurred when forging the tokens {:?}", e);
-            return Redirect::to("/signup?error=internal_server_error")
-        }
-    }
+    let tokens = jwt::ForgeOptions::new()
+        .offline(Some(req.offline))
+        .subject(req.email.clone())
+        .issuer(String::from("https://steady-bytes.com"))
+        .audience(audience)
+        .authorized_parties(String::from("client_id"))
+        .scopes(scopes)
+        .forge();
 
-    println!("tokens added to session");
+    // todo -> figure out how to set in the users session
+ 
+    // match tokens {
+    //     Ok(tokens) => {
+    //         // add access token to session
+    //         session.set("access_token", tokens.access_token);
+    //         session.set("id_token", tokens.id_token);
+    //         session.set("refresh_token", tokens.refresh_token);
+    //     },
+    //     Err(e) => {
+    //         println!("and error occurred when forging the tokens {:?}", e);
+    //         return Redirect::to("/signup?error=internal_server_error")
+    //     }
+    // }
 
     Redirect::to("/app")
 }

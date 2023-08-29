@@ -20,10 +20,9 @@ pub type JwtResult<T> = Result<T, TokenError>;
 
 #[derive(Debug)]
 pub struct Tokens {
-    pub id_token: Option<String>,
-    pub access_token: Option<String>,
+    pub id_token: String,
+    pub access_token: String,
     pub refresh_token: Option<String>,
-    pub expires_in: i64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -32,19 +31,81 @@ pub struct AccessToken {
     pub expires_in: i64,
 }
 
+#[derive(Default, Clone)]
 pub struct ForgeOptions {
     pub offline_mode: bool,
+    // The subject of the token. This is a way to identify the user, currently we are using
+    // the users email.
+    // todo -> Use a `Pairwise Pseudonymous Identifier` for the subject id
+    //         https://curity.io/resources/learn/jwt-best-practices/#12-pairwise-pseudonymous-identifiers 
+    pub subject: String,
+    // A string that identifies the principal that issued the JWT
+    pub issuer: String,
+    // Audience, the recipient for which the JWT is intended.
+    // So in the case of an admin user, that is logging into the admin dashboard
+    // something that notes the product/client that will be using token
+    pub audience: Vec<String>,
+    // authorized_parties, is the same as the client_id. So it's the client id that the token is issued for
+    pub authorized_parties: String,
+    // scope, is a mapping of what claims the token is for. It's uses a way of telling the server
+    // what access the token is for. For, example a scope might have `users` in it. That could 
+    // be used as a mapping to the acl for which a user would have some type of access to the `users` resource.
+    pub scope: Vec<String>,
 }
 
 impl ForgeOptions {
     pub fn new() -> Self {
-        ForgeOptions { offline_mode: false }
+        Self {
+            offline_mode: false,
+            subject: String::new(),
+            issuer: String::new(),
+            audience: vec![],
+            authorized_parties: String::new(),
+            scope: vec![],
+        }
+    }
+
+    pub fn offline(mut self, m: Option<bool>) -> Self {
+        match m {
+            Some(v) => self.offline_mode = v,
+            None => self.offline_mode = false
+        }
+
+        self 
+    }
+
+    pub fn subject(mut self, sub: String) -> Self {
+        self.subject = sub;
+        self
+    }
+
+    pub fn issuer(mut self, iss: String) -> Self {
+        self.issuer = iss;
+        self
+    }
+
+    pub fn audience(mut self, aud: Vec<String>) -> Self {
+        self.audience = aud;
+        self
+    }
+
+    pub fn authorized_parties(mut self, az: String) -> Self {
+        self.authorized_parties = az;
+        self
+    }
+
+    pub fn scopes(mut self, scopes: Vec<String>) -> Self {
+        self.scope = scopes;
+        self
+    }
+
+    // forge executes the builder returning the tokens
+    pub fn forge(self) -> JwtResult<Tokens> {
+        forge_tokens(self)
     }
 }
 
-pub fn forge_tokens(email: &str, options: Option<ForgeOptions>) -> JwtResult<Tokens> {
-    let opt = options.unwrap_or(ForgeOptions{ offline_mode: false});
-    
+pub fn forge_tokens(options: ForgeOptions) -> JwtResult<Tokens> { 
     let key = b"secret";
     let header = Header { kid: Some("signing_key".to_owned()), alg: Algorithm::HS512, ..Default::default() };
     let now = Utc::now();
@@ -53,24 +114,23 @@ pub fn forge_tokens(email: &str, options: Option<ForgeOptions>) -> JwtResult<Tok
     let refresh_token_expiry = now + Duration::days(30);
 
     let mut tokens = Tokens {
-        access_token: None,
-        id_token: None,
+        access_token: String::new(),
+        id_token: String::new(),
         refresh_token: None,
-        expires_in: access_token_expiry.timestamp(),
     };
 
     match encode(&header, &AccessTokenClaims{
-        iss: String::from("https://domain.auth.com/"),
-        sub: email.to_owned(),
-        aud: vec![String::from("audience")],
-        azp: String::from("my_client_id"),
+        iss: options.issuer.clone(),
+        sub: options.subject.clone(),
+        aud: options.audience.clone(),
+        azp: options.authorized_parties.clone(),
         exp: access_token_expiry.timestamp(),
         iat: access_token_expiry.timestamp(),
-        scope: String::from("default"),
+        scope: options.scope.clone(),
     }, &EncodingKey::from_secret(key)) {
         Ok(t) => {
             println!("access_token minted");
-            tokens.access_token = Some(t);
+            tokens.access_token = t.clone();
         },
         Err(e) => {
             println!("failed to mint access token");
@@ -79,16 +139,16 @@ pub fn forge_tokens(email: &str, options: Option<ForgeOptions>) -> JwtResult<Tok
     };
 
     match encode(&header, &IdTokenClaims{
-        iss: String::from("https://domain.auth.com/"),
-        sub: email.to_owned(),
-        aud: vec![String::from("audience")],
+        iss: options.issuer.clone(),
+        sub: options.subject.clone(),
+        aud: options.audience.clone(),
         exp: id_token_expiry.timestamp(),
         iat: id_token_expiry.timestamp(), 
-        email: email.to_owned(),
+        email: options.subject.clone(),
     }, &EncodingKey::from_secret(key)) {
         Ok(t) => {
             println!("id_token minted");
-            tokens.id_token = Some(t)
+            tokens.id_token = t.clone()
         },
         Err(e) => {
             println!("failed to mint id token");
@@ -96,21 +156,21 @@ pub fn forge_tokens(email: &str, options: Option<ForgeOptions>) -> JwtResult<Tok
         }
     }
 
-    if opt.offline_mode == true {
+    if options.offline_mode == true {
         println!("offline_mode is true");
 
         match encode(&header, &RefreshTokenClaims{
-            iss: String::from("https://domain.auth.com/"),
-            sub: email.to_owned(),
-            aud: vec![String::from("audience")],
+            iss: options.issuer.clone(),
+            sub: options.subject.clone(),
+            aud: options.audience.clone(),
             exp: refresh_token_expiry.timestamp(),
             iat: refresh_token_expiry.timestamp(),
-            scope: String::from("retail"), 
-            client_id: String::from("uuid-for-client"),
+            scope: options.scope.clone(), 
+            client_id: options.authorized_parties.clone(),
         }, &EncodingKey::from_secret(key)) {
             Ok(t) => {
                 println!("refresh_token minted");
-                tokens.refresh_token = Some(t)
+                tokens.refresh_token = Some(t.clone())
             },
             Err(e) => {
                 println!("failed to min refresh token");
@@ -120,35 +180,6 @@ pub fn forge_tokens(email: &str, options: Option<ForgeOptions>) -> JwtResult<Tok
     }
    
     Ok(tokens)
-}
-
-pub fn forge_access_token(email: &str) -> JwtResult<AccessToken> {
-    let key = b"secret";
-    let header = Header { kid: Some("signing_key".to_owned()), alg: Algorithm::HS512, ..Default::default() };
-    let now = Utc::now();
-    let access_token_expiry = now + Duration::minutes(60);
-
-    match encode(&header, &AccessTokenClaims{
-        iss: String::from("https://domain.auth.com/"),
-        sub: email.to_owned(),
-        aud: vec![String::from("audience")],
-        azp: String::from("my_client_id"),
-        exp: access_token_expiry.timestamp(),
-        iat: access_token_expiry.timestamp(),
-        scope: String::from("retail"),
-    }, &EncodingKey::from_secret(key)) {
-        Ok(t) => {
-            println!("access_token minted");
-            return Ok(AccessToken{
-                access_token: Some(t),
-                expires_in: access_token_expiry.timestamp()
-            })
-        },
-        Err(e) => {
-            println!("failed to mint access token");
-            return Err(TokenError(e.to_string()))
-        },
-    };
 }
 
 #[derive(Debug)]
@@ -238,8 +269,37 @@ pub struct AccessTokenClaims {
     azp: String,
     exp: i64,
     iat: i64,
-    scope: String,
+    scope: Vec<String>,
 }
+
+// pub fn forge_access_token(email: &str) -> JwtResult<AccessToken> {
+//     let key = b"secret";
+//     let header = Header { kid: Some("signing_key".to_owned()), alg: Algorithm::HS512, ..Default::default() };
+//     let now = Utc::now();
+//     let access_token_expiry = now + Duration::minutes(60);
+
+//     match encode(&header, &AccessTokenClaims{
+//         iss: "https://domain.auth.com/",
+//         sub: email.to_owned(),
+//         aud: vec![String::from("audience")],
+//         azp: String::from("my_client_id"),
+//         exp: access_token_expiry.timestamp(),
+//         iat: access_token_expiry.timestamp(),
+//         scope: vec![String::from("retail")],
+//     }, &EncodingKey::from_secret(key)) {
+//         Ok(t) => {
+//             println!("access_token minted");
+//             return Ok(AccessToken{
+//                 access_token: Some(t),
+//                 expires_in: access_token_expiry.timestamp()
+//             })
+//         },
+//         Err(e) => {
+//             println!("failed to mint access token");
+//             return Err(TokenError(e.to_string()))
+//         },
+//     };
+// }
 
 /// ref: https://auth0.com/docs/secure/tokens/refresh-tokens
 /// {
@@ -261,7 +321,7 @@ pub struct RefreshTokenClaims {
     aud: Vec<String>,
     exp: i64,
     iat: i64,
-    scope: String,
+    scope: Vec<String>,
     client_id: String,
 }
 
