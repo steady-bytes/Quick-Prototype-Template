@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package draft.access_controls.v1;
+
+message AccessControlPolicy {
+    // object key attribute to lookup in the object.
+    // Thinking something like this {"uuid": "06f822e7-3265-4722-beec-d50d8e9140e0"}
+    // I wonder if you can put a unique constrain on a column like that
+    repeated LookupObjectKey lookup_object_key = 1;
+    // data_type name. This normally correlates with table name, and or model type name.
+    // I like to think of it as either an aggregate, or an entity. It's worth noteing
+    // if access is restricted to an aggregate, all of it's encompasing entities will
+    // inhert the same restriction restriction
+    string data_type = 2;
+    // string mapping of the different operations that can be performed on a resource
+    Operation operation = 3;
+    // subject of the action being evaluated
+    Subject subject = 4;
+    // outcom is set so a policy can be either a deny filter, or allowed filter.
+    // A example policy might be allow all users with driver role to read this specific
+    // data.
+    Outcome outcome = 5;
+}
+
+// ObjectKey is a key value mapping that can be used to lookup an aggregate/entity 
+// example {"uuid": "b7e3597a-88af-4f20-a9b5-0d49f2c8376e"} or (where ?KEY = ?VALUE )
+message LookupObjectKey {
+    string key = 1;
+    string value = 2;
+}
+
+// Operations are actions that can be taken on a resource
+// they are currently data specific b/c this system will be used mainly for
+// data related access controls. In the future this could be expanded
+// to contain other resources
+enum Operation {
+    DATA_OPERATION_UNSPECIFIED = 0;
+    // data specific operations 
+    INSERT = 1;
+    UPDATE = 2;
+    READ = 3;
+    DELETE = 4;
+    // experimental field, writing 
+    CHANGE_PERMISSION = 5;
+}
+
+// Details of the client/user making the request
+message Subject {
+    string user_id = 1;
+    repeated string group_ids = 2;
+}
+
+enum Outcome {
+    OUTCOME_UNSPECIFIELD = 0;
+
+    ALLOWED = 1;
+    DENIED = 2;
+}

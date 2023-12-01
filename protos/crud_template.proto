@@ -1,0 +1,47 @@
+// data base methods
+
+service P__Inserter {
+    rpc Insert(InsertRequest) returns (InsertResponse);
+}
+
+message InsertRequest {
+    P__ model = 1;
+}
+
+message InsertResponse {
+    string id = 1;
+}
+
+service P__Updater {
+    rpc Update (UpdateRequest) returns (UpdateRespone);
+}
+
+message UpdateRequest {
+    P__ model = 1;
+}
+
+message UpdateResponse {
+    string id = 1;
+}
+
+service P__Reader {
+    rpc Read(ReadRequest) returns (ReadResponse);
+}
+
+message ReadRequest {
+    ReadFilter filter = 1;
+}
+
+message ReadResponse {
+    repeated P__ data = 1;
+}
+
+service P__Deleter {
+    rpc Delete(DeleteRequest) returns (DeleteResponse);
+}
+
+message DeleteRequest {
+    string id = 1;
+}
+
+message DeleteResponse {}

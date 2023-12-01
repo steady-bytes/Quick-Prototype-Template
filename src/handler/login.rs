@@ -78,6 +78,10 @@ pub async fn login_user(
         .authorized_parties(String::from("client_id"))
         .scopes(scopes)
         .forge();
+
+    // if req.offline {
+    //     // insert the fresh token into db
+    // }
      
     // forge tokens, if fail redirect to signup page with internal_server_error
     match tokens {

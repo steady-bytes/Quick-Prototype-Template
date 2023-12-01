@@ -25,14 +25,10 @@ pub struct Tokens {
     pub refresh_token: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct AccessToken {
-    pub access_token: Option<String>,
-    pub expires_in: i64,
-}
-
 #[derive(Default, Clone)]
 pub struct ForgeOptions {
+    // if offline_mode is true, then a `refresh_token` will be included
+    // that can be used to keep the users session open for 24 hours. 
     pub offline_mode: bool,
     // The subject of the token. This is a way to identify the user, currently we are using
     // the users email.

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package draft.access_controls.v1;
+
+import "protos/draft/access_controls/v1/models.proto";
+
+// Client integration point
+service PolicyEvaluator {
+    // integration point for the service clients to call. 
+    // policy decition point
+    rpc EvaluatePolicy(EvaluatePolicyRequest) returns (EvaluatePolicyResponse);
+}
+
+// Is the client allowed to perform the specific operation on the 
+// aggregate/entity that was found with the LookupObjectKey
+message EvaluatePolicyRequest {
+    repeated draft.access_controls.v1.LookupObjectKey lookup_object_key = 1;
+    string data_type = 2;
+    Operation operation = 3;
+    string role = 4;
+}
+
+message EvaluatePolicyResponse {
+    draft.access_controls.v1.Outcome outcome = 1;
+}
